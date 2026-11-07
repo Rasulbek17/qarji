@@ -173,7 +173,16 @@ function dl(){
   var r=stm();if(!r.length)return;
   var b=$('dlc'),old=b.textContent,per=$('sp').value,I=0,E=0,
   lb=per=='m'?MN[M]+' '+Y:per=='y'?Y+' жыл':'Барлық кезең';
-  function msg(s){b.textContent=s;setTimeout(function(){b.textContent=old},2000)}
+  function msg(s){b.textContent=s;setTimeout(function(){b.textContent=old},3500)}
+  function fb(){
+    var td='<td style="border:1px solid #bbb">',
+    rows=r.map(function(x){var n=x.t=='inc';return'<tr>'+td+fd(x.d)+'</td>'+td+(n?'Кіріс':esc(x.c))+'</td>'+td+esc(x.n)+'</td><td style="border:1px solid #bbb;color:'+(n?'#1f9d55':'#d64545')+'">'+(n?x.a:-x.a)+'</td></tr>'}).join(''),
+    html='<table><tr><td colspan="4"><b>Қаржы есебі — выписка</b></td></tr><tr><td colspan="4">'+lb+'</td></tr><tr><td colspan="4">By_Rasul</td></tr><tr><th style="background:#e8edf3;border:1px solid #bbb">Күні</th><th style="background:#e8edf3;border:1px solid #bbb">Түрі / бөлім</th><th style="background:#e8edf3;border:1px solid #bbb">Не үшін</th><th style="background:#e8edf3;border:1px solid #bbb">Сома</th></tr>'+rows+'<tr><td></td><td></td><td><b>Кіріс</b></td><td><b>'+I+'</b></td></tr><tr><td></td><td></td><td><b>Шығыс</b></td><td><b>'+E+'</b></td></tr><tr><td></td><td></td><td><b>Қалды</b></td><td><b>'+(I-E)+'</b></td></tr></table>',
+    tsv=r.map(function(x){var n=x.t=='inc';return[fd(x.d),n?'Кіріс':x.c,x.n,n?x.a:-x.a].join('\t')}).join('\n');
+    function ok(){msg('✅ Көшірілді! Excel-ге Ctrl+V басыңыз')}
+    function plain(){navigator.clipboard.writeText(tsv).then(ok,function(){msg('Қате')})}
+    try{navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([tsv],{type:'text/plain'})})]).then(ok,plain)}catch(e){try{plain()}catch(e2){msg('Қате')}}
+  }
   if(!window.ExcelJS){msg('Қате');return}
   r.forEach(function(x){if(x.t=='inc')I+=x.a;else E+=x.a});
   var ln={style:'thin',color:{argb:'FFBBBBBB'}},bd={top:ln,left:ln,bottom:ln,right:ln};
@@ -188,8 +197,8 @@ function dl(){
     var a=row.getCell(4);a.numFmt='#,##0';a.font={color:{argb:n?'FF1F9D55':'FFD64545'}};a.alignment={horizontal:'right'}});
   ws.addRow([]);
   [['Кіріс',I],['Шығыс',E],['Қалды',I-E]].forEach(function(t){var row=ws.addRow(['','',t[0],t[1]]);row.font={bold:true};row.getCell(4).numFmt='#,##0'});
-  (window.claude?claude.use('downloads'):Promise.resolve(null)).then(function(d){
-    if(!d){msg('Қолжетімсіз');return}
+  (window.claude?claude.use('permissions').then(function(p){return p?p.request(['downloads']):0}).catch(function(){}).then(function(){return claude.use('downloads')}):Promise.resolve(null)).then(function(d){
+    if(!d){return wb.xlsx.writeBuffer().then(function(buf){var u=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})),a=document.createElement('a');a.href=u;a.download='vypiska.xlsx';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u)},4000);msg('⬇ Жүктелуде...')}).catch(fb)}
     return wb.xlsx.writeBuffer().then(function(buf){return d.save({filename:'vypiska.xlsx',data:buf})}).then(function(){msg('✅ Дайын')},function(e){if(!e||e.code!='declined')msg('Қате')})
   }).catch(function(){msg('Қате')});
 }
