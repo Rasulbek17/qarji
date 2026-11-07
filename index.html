@@ -50,7 +50,9 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 td,th{padding:5px 6px;text-align:right;border-bottom:1px solid var(--ln);white-space:nowrap}
 td:first-child,th:first-child{text-align:left}
 .mut{color:var(--mut);font-size:13px}
+@media print{.w>*:not(#stc){display:none!important}.bal,.np{display:none!important}body{background:#fff;color:#000;padding:0}.card{border:0;background:#fff!important}td,th{color:#000;border-color:#bbb}}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 </head>
 <body>
 <div class="w">
@@ -62,16 +64,17 @@ td:first-child,th:first-child{text-align:left}
 </div>
 <div class="card">
   <h2 class="in">➕ Кіріс (табыс)</h2>
-  <div class="row"><input class="t" id="it" placeholder="Қайдан (жалақы, ...)"><input class="n" id="ia" type="number" inputmode="decimal" placeholder="Сома"><button class="p" id="ib">Қосу</button></div>
+  <div class="row"><input class="t" id="it" placeholder="Қайдан (жалақы, ...)"><input class="n" id="idt" type="date"><input class="n" id="ia" type="number" inputmode="decimal" placeholder="Сома"><button class="p" id="ib">Қосу</button></div>
   <div id="il"></div><div class="tot"><span>Жалпы кіріс</span><span class="in" id="ti"></span></div>
 </div>
 <div class="card">
   <h2 class="ex">➖ Шығыс</h2>
-  <div class="row"><input class="t" id="et" placeholder="Не үшін (нан, бензин, ...)"><select id="ec"></select><input class="n" id="ea" type="number" inputmode="decimal" placeholder="Сома"><button class="p" id="eb">Қосу</button></div>
+  <div class="row"><input class="t" id="et" placeholder="Не үшін (нан, бензин, ...)"><select id="ec"></select><input class="n" id="edt" type="date"><input class="n" id="ea" type="number" inputmode="decimal" placeholder="Сома"><button class="p" id="eb">Қосу</button></div>
   <div id="el"></div><div class="tot"><span>Жалпы шығыс</span><span class="ex" id="te"></span></div>
 </div>
 <div class="card"><h2>📊 Осы айдың талдауы</h2><div id="ma"></div></div>
 <div class="card"><h2>📅 12 айлық талдау</h2><div id="ya"></div></div>
+<div class="card" id="stc"><h2>🧾 Көшірме (выписка)</h2><div class="row np"><select id="sp" onchange="render()"><option value="m">Осы ай</option><option value="y">Осы жыл</option><option value="a">Барлығы</option></select><button id="cpb" onclick="cp()">📋 Көшіру</button><button id="dlc" onclick="dl()">⬇ Excel (.xlsx)</button></div><div id="sl"></div></div>
 <p class="mut">Деректер осы құрылғыда (браузерде) сақталады. Келесі айға өтсеңіз, алдыңғы ай жойылмайды.</p>
 </div>
 <div class="bal"><div><span>Қалды:</span><span id="bl"></span></div></div>
@@ -96,7 +99,7 @@ $('nx').onclick=function(){M++;if(M>11){M=0;Y++}render()};
 function add(type){
   var p=type=='i'?'i':'e',t=$(p+'t').value.trim(),a=parseFloat($(p+'a').value);
   if(!(a>0))return;
-  var o={t:t||(type=='i'?'Кіріс':'Шығыс'),a:a};
+  var o={t:t||(type=='i'?'Кіріс':'Шығыс'),a:a,d:pickDate(p)};
   if(type=='e')o.c=$('ec').value;
   cur()[type=='i'?'inc':'exp'].push(o);
   $(p+'t').value='';$(p+'a').value='';save();render();
@@ -104,7 +107,7 @@ function add(type){
 $('ib').onclick=function(){add('i')};$('eb').onclick=function(){add('e')};
 function del(type,i){cur()[type].splice(i,1);save();render()}
 function list(arr,type,cls){
-  return arr.map(function(x,i){return'<div class="it"><div>'+esc(x.t)+(x.c?'<small>'+esc(x.c)+'</small>':'')+'</div><span class="a '+cls+'">'+f(x.a)+'</span><button onclick="del(\''+type+'\','+i+')">✕</button></div>'}).join('')||'<div class="mut">Бос</div>';
+  return arr.map(function(x,i){return'<div class="it"><div>'+esc(x.t)+(x.c||x.d?'<small>'+(x.d?fd(x.d):'')+(x.d&&x.c?' · ':'')+esc(x.c||'')+'</small>':'')+'</div><span class="a '+cls+'">'+f(x.a)+'</span><button onclick="del(\''+type+'\','+i+')">✕</button></div>'}).join('')||'<div class="mut">Бос</div>';
 }
 function bars(c,tot){
   var mx=c.length?c[0][1]:1;
@@ -145,6 +148,51 @@ function yearAn(){
   if(TI>0)h+='<div class="tip '+(TI>=TE?'ok':'w2')+'">'+(TI>=TE?'✅ Жылына '+f(TI-TE)+' жиналды ('+Math.round((TI-TE)/TI*100)+'%).':'⚠️ Жыл бойы '+f(TE-TI)+' артық шығын.')+'</div>';
   return h;
 }
+function pm(){return Y+'-'+('0'+(M+1)).slice(-2)}
+function defDate(){var t=new Date();return(t.getFullYear()==Y&&t.getMonth()==M)?pm()+'-'+('0'+t.getDate()).slice(-2):pm()+'-01'}
+function pickDate(p){var v=$(p+'dt').value;return(v&&v.slice(0,7)==pm())?v:defDate()}
+function setDates(){var last=new Date(Y,M+1,0).getDate();['idt','edt'].forEach(function(id){var e=$(id);e.min=pm()+'-01';e.max=pm()+'-'+('0'+last).slice(-2);if(!e.value||e.value.slice(0,7)!=pm())e.value=defDate()})}
+function fd(d){var p=d.split('-');return(p[2]=='00'?'--':p[2])+'.'+p[1]+'.'+p[0]}
+function stm(){var per=$('sp').value,rows=[];
+  Object.keys(S).forEach(function(k){var p=k.split('-'),y=+p[0],m=+p[1]-1;
+    if(per=='m'&&!(y==Y&&m==M))return;if(per=='y'&&y!=Y)return;
+    ['inc','exp'].forEach(function(t){(S[k][t]||[]).forEach(function(x){rows.push({d:x.d||(y+'-'+('0'+(m+1)).slice(-2)+'-00'),t:t,n:x.t,c:x.c||'',a:x.a})})})});
+  rows.sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0});return rows}
+function stmHtml(){var r=stm(),I=0,E=0,h='';
+  if(!r.length)return'<div class="mut">Жазба жоқ</div>';
+  h+='<div class="sc"><table><tr><th>Күні</th><th>Түрі / бөлім</th><th>Не үшін</th><th>Сома</th></tr>';
+  r.forEach(function(x){var n=x.t=='inc';if(n)I+=x.a;else E+=x.a;
+    h+='<tr><td>'+fd(x.d)+'</td><td>'+(n?'Кіріс':esc(x.c))+'</td><td>'+esc(x.n)+'</td><td class="'+(n?'in':'ex')+'">'+(n?'+':'−')+f(x.a)+'</td></tr>'});
+  h+='</table></div><div class="tot"><span>Кіріс</span><span class="in">'+f(I)+'</span></div><div class="tot" style="border:0"><span>Шығыс</span><span class="ex">'+f(E)+'</span></div><div class="tot" style="border:0"><span>Қалды</span><span>'+f(I-E)+'</span></div>';
+  return h}
+function cp(){var t='Қаржы есебі — выписка\n'+stm().map(function(x){return fd(x.d)+'\t'+(x.t=='inc'?'Кіріс':'Шығыс: '+x.c)+'\t'+x.n+'\t'+(x.t=='inc'?'+':'-')+x.a}).join('\n'),b=$('cpb');
+  function ok(){b.textContent='✅ Көшірілді';setTimeout(function(){b.textContent='📋 Көшіру'},1500)}
+  function fb(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');ok()}catch(e){}document.body.removeChild(a)}
+  try{navigator.clipboard.writeText(t).then(ok,fb)}catch(e){fb()}}
+function dl(){
+  var r=stm();if(!r.length)return;
+  var b=$('dlc'),old=b.textContent,per=$('sp').value,I=0,E=0,
+  lb=per=='m'?MN[M]+' '+Y:per=='y'?Y+' жыл':'Барлық кезең';
+  function msg(s){b.textContent=s;setTimeout(function(){b.textContent=old},2000)}
+  if(!window.ExcelJS){msg('Қате');return}
+  r.forEach(function(x){if(x.t=='inc')I+=x.a;else E+=x.a});
+  var ln={style:'thin',color:{argb:'FFBBBBBB'}},bd={top:ln,left:ln,bottom:ln,right:ln};
+  var wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Выписка');
+  ws.columns=[{width:14},{width:24},{width:34},{width:16}];
+  ws.addRow(['Қаржы есебі — выписка']).font={bold:true,size:14};
+  ws.addRow([lb]);ws.addRow(['By_Rasul']);ws.addRow([]);
+  var h=ws.addRow(['Күні','Түрі / бөлім','Не үшін','Сома']);
+  h.eachCell(function(c,i){c.font={bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EDF3'}};c.border=bd;if(i==4)c.alignment={horizontal:'right'}});
+  r.forEach(function(x){var n=x.t=='inc',row=ws.addRow([fd(x.d),n?'Кіріс':x.c,x.n,n?x.a:-x.a]);
+    row.eachCell(function(c){c.border=bd});
+    var a=row.getCell(4);a.numFmt='#,##0';a.font={color:{argb:n?'FF1F9D55':'FFD64545'}};a.alignment={horizontal:'right'}});
+  ws.addRow([]);
+  [['Кіріс',I],['Шығыс',E],['Қалды',I-E]].forEach(function(t){var row=ws.addRow(['','',t[0],t[1]]);row.font={bold:true};row.getCell(4).numFmt='#,##0'});
+  (window.claude?claude.use('downloads'):Promise.resolve(null)).then(function(d){
+    if(!d){msg('Қолжетімсіз');return}
+    return wb.xlsx.writeBuffer().then(function(buf){return d.save({filename:'vypiska.xlsx',data:buf})}).then(function(){msg('✅ Дайын')},function(e){if(!e||e.code!='declined')msg('Қате')})
+  }).catch(function(){msg('Қате')});
+}
 function render(){
   var d=cur();
   $('ttl').textContent=MN[M]+' '+Y;
@@ -153,7 +201,7 @@ function render(){
   var I=sum(d.inc),E=sum(d.exp);
   $('ti').textContent=f(I);$('te').textContent=f(E);
   var b=$('bl');b.textContent=f(I-E);b.style.color=I-E<0?'var(--ex)':'var(--in)';
-  $('ma').innerHTML=monthAn();$('ya').innerHTML=yearAn();
+  $('ma').innerHTML=monthAn();$('ya').innerHTML=yearAn();$('sl').innerHTML=stmHtml();setDates();
 }
 render();
 </script>
